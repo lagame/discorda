@@ -4,7 +4,7 @@ import { AuthError } from './auth-error';
 
 export interface LoginCallback { redirectTo: string; code: Promise<string>; close(): void; }
 
-export async function listenForLogin(signal: AbortSignal, port = 3000, timeoutMs = 300_000): Promise<LoginCallback> {
+export async function listenForLogin(signal: AbortSignal, port = 3000, timeoutMs = 300_000, fallbackPort = port === 3000 ? 3001 : undefined): Promise<LoginCallback> {
   const route = `/redirect/${randomBytes(32).toString('hex')}`;
   let resolveCode!: (code: string) => void;
   let rejectCode!: (error: Error) => void;
@@ -50,13 +50,21 @@ export async function listenForLogin(signal: AbortSignal, port = 3000, timeoutMs
     server.closeIdleConnections();
     if (error) rejectCode(error); else resolveCode(value!);
   }
-  try {
-    await new Promise<void>((resolve, reject) => {
+  const listen = (candidate: number) =>
+    new Promise<void>((resolve, reject) => {
       server.once('error', reject);
-      server.listen(port, '127.0.0.1', () => { server.removeListener('error', reject); resolve(); });
+      server.listen(candidate, '127.0.0.1', () => { server.removeListener('error', reject); resolve(); });
     });
-  } catch {
-    finish(new AuthError('A porta local de login está ocupada. Feche o outro aplicativo que usa a porta 3000 e tente novamente.'));
+  try {
+    try { await listen(port); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EADDRINUSE' || fallbackPort === undefined) throw error;
+      await listen(fallbackPort);
+    }
+  } catch (error) {
+    finish(new AuthError((error as NodeJS.ErrnoException).code === 'EADDRINUSE'
+      ? 'As portas locais de login estão ocupadas. Libere a porta 3000 ou 3001 e tente novamente.'
+      : 'Não foi possível receber o retorno do login.'));
     return await code as never;
   }
   server.on('error', () => finish(new AuthError('Não foi possível receber o retorno do login.')));

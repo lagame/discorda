@@ -16,7 +16,7 @@ python3 tools/setup-vps.py
 
 O assistente solicita domínio, IPv4 público, rede Docker e container Caddy, e-mail do proprietário, URL e publishable key do Supabase. Descobre somente o IP do Caddy nessa rede, cria senhas aleatórias e salva arquivos privados em `.discorda/vps`. Não altera Caddy, DNS ou firewall e não inicia serviços. Não envie essa pasta para o GitHub. Não execute o assistente novamente sobre uma configuração existente.
 
-O e-mail proprietário será autorizado durante a migração. Mantenha o mesmo projeto Supabase para preservar as identidades dos usuários. Configure no Supabase os redirects `http://127.0.0.1:3000/redirect/**` (desktop) e `https://SEU-DOMINIO/admin/index.html` (painel). Google continua usando o callback do Supabase. Não é necessário pôr o client secret do Google na VPS.
+O e-mail proprietário será autorizado durante a migração. Mantenha o mesmo projeto Supabase para preservar as identidades dos usuários. Configure no Supabase os redirects `http://127.0.0.1:3000/redirect/**` e `http://127.0.0.1:3001/redirect/**` (desktop) e `https://SEU-DOMINIO/admin/index.html` (painel). Google continua usando o callback do Supabase. Não é necessário pôr o client secret do Google na VPS.
 
 ## 2. Portas e recursos
 

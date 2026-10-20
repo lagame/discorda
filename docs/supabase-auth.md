@@ -11,7 +11,7 @@ O endpoint público JWKS respondeu com ES256 e a descoberta OIDC informou issuer
 ## Configurar o Supabase
 
 1. Em Authentication → Sign In / Providers, habilitar Google. O client ID/secret do Google ficam no painel do Supabase; configurar no Google Cloud o callback HTTPS indicado pelo próprio Supabase.
-2. Em Authentication → URL Configuration → Redirect URLs, adicionar **`http://127.0.0.1:3000/redirect/*`**. O asterisco permite apenas o segmento aleatório de uma tentativa. Não configurar apenas `/redirect` e não usar um wildcard global.
+2. Em Authentication → URL Configuration → Redirect URLs, adicionar **`http://127.0.0.1:3000/redirect/**`** e **`http://127.0.0.1:3001/redirect/**`**. Essas regras cobrem o segmento aleatório de cada tentativa. A segunda porta é usada se a primeira estiver ocupada. Não configurar apenas `/redirect` e não usar um wildcard global.
 3. Copiar a **publishable key** (prefixo `sb_publishable_`) ou a chave legada `anon`. Não usar `service_role`, `sb_secret_` ou senha do banco no campo da chave pública.
 4. Manter assinatura JWT assimétrica (ES256 já foi observada). A API aceita ES256/RS256; não recebe o JWT secret simétrico.
 5. Definir expiração do JWT conforme a política desejada do projeto. O código respeita `exp`, não pressupõe cinco minutos. Não confundir duração do JWT com validade da sessão/refresh token.

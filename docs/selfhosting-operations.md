@@ -16,6 +16,14 @@ docker compose --env-file .discorda/selfhost/compose.env -f infra/compose/selfho
 
 Habilite o início do Docker Desktop ao entrar no Windows. `restart: unless-stopped` reinicia os serviços após reiniciar a engine; um serviço parado manualmente precisa ser iniciado novamente. O Radmin também deve estar conectado.
 
+### LiveKit nativo no Windows
+
+No piloto que usa `.discorda/selfhost/livekit-native.yaml`, `start-selfhost.ps1` detecta esse arquivo, mantém o LiveKit Docker parado e inicia o binário Windows em `artifacts/media-lab/server/livekit-server.exe`. O PostgreSQL e a API continuam no Docker. Após reiniciar o Windows, conecte o Radmin, espere o Docker Desktop iniciar e execute `pwsh -File tools/start-selfhost.ps1`; o LiveKit nativo não inicia sozinho. Preserve o binário nesse caminho, ou baixe novamente com `pwsh -File tools/media-lab/setup-windows.ps1` antes de iniciar. Instalações sem esse arquivo continuam usando LiveKit Docker.
+
+Execute `pwsh -File tools/check-selfhost.ps1` antes de convidar amigos. O Windows pode criar permissões amplas de entrada para `livekit-server.exe`. Depois de cadastrar os IPs Radmin dos amigos no painel e aplicar o script de Firewall gerado pelo painel como administrador, desabilite as duas regras automáticas amplas de entrada do `livekit-server.exe` no Firewall do Windows. Confira o caminho do executável nas propriedades da regra para não alterar outro programa. As regras `Discorda SelfHost ICE TCP` e `Discorda SelfHost ICE UDP` devem permanecer ativas e restritas aos IPs cadastrados. Repita a checagem; ela deve deixar de apontar a permissão ampla. Só então teste voz em dois computadores.
+
+Se precisar voltar ao LiveKit Docker neste piloto, execute `pwsh -File tools/restore-docker-media.ps1` com a configuração privada de backup ainda presente. Esse comando interrompe chamadas, restaura `settings.json`, o reinício automático do contêiner e a API. A reversão não foi executada neste piloto enquanto a mídia nativa funciona.
+
 Não use `down -v` no servidor: isso apaga os volumes do banco e da política de rede. Logs podem conter metadados de operação e devem ser revisados antes de anexar em issues.
 
 ## Onde ficam as configurações
@@ -77,9 +85,9 @@ O certificado gerado vence em um ano. Renove antes do vencimento usando uma CA p
 ## Problemas comuns
 
 - **Porta ocupada:** pare a implantação antiga que usa 7443/7881/7882 antes de migrar. Não finalize processos desconhecidos.
-- **Login redireciona errado:** confira as duas Redirect URLs do README, incluindo `localhost` para o painel e `127.0.0.1` para o desktop. Não são intercambiáveis.
+- **Login redireciona errado:** confira as três Redirect URLs do README: `localhost` para o painel e portas `3000` e `3001` em `127.0.0.1` para o desktop. Não são intercambiáveis.
 - **Login permitido pelo Google, negado no app:** autorize o mesmo e-mail na lista do Discorda. O provedor deve ser Google e o e-mail confirmado.
-- **Sem áudio/vídeo entre PCs:** ambos precisam estar na mesma rede Radmin, com IPs corretos no Firewall. Verifique UDP 7882 e TCP 7881, regras Docker e `rtc.node_ip`. Conectar ao chat não comprova conectividade de mídia.
+- **Sem áudio/vídeo entre PCs:** execute `pwsh -File tools/check-selfhost.ps1` no host. Ambos precisam estar na mesma rede Radmin, com IPs corretos no Firewall. Verifique UDP 7882 e TCP 7881, regras do processo ativo (Docker ou LiveKit nativo) e `rtc.node_ip`. Uma regra de bloqueio prevalece sobre uma regra de permissão; revise exceções limitadas à interface Radmin, sem liberar o Docker inteiro. Conectar ao chat ou receber resposta de `/health/ready` não comprova conectividade de mídia. Mesmo sem bloqueio explícito, o encaminhamento UDP do Docker Desktop no Windows pode falhar; confirme a chamada em dois computadores antes de convidar o grupo.
 - **Readiness 503:** confira saúde do banco e saída do serviço migrate. Não envie arquivos privados para diagnóstico.
 - **Reinício alterou IP Radmin:** IP é usado em Compose, LiveKit, URL pública e SAN do certificado. Atualize os quatro e redistribua a conexão.
 - **A API antiga ainda atende:** a implantação Docker usa dados próprios. Planeje exportação/importação e janela de troca, mantendo backup; não execute dois servidores no mesmo IP/portas.

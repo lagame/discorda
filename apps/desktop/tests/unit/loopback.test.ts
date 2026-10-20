@@ -1,8 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import { listenForLogin } from '../../src/main/auth/loopback';
-import { request } from 'node:http';
+import { createServer, request } from 'node:http';
 
 describe('OAuth callback boundary', () => {
+  it('uses the fallback port when the primary port is occupied', async () => {
+    const occupied = createServer();
+    await new Promise<void>(resolve => occupied.listen(0, '127.0.0.1', resolve));
+    const address = occupied.address();
+    if (!address || typeof address === 'string') throw new Error('Expected a TCP listener');
+    try {
+      const login = await listenForLogin(new AbortController().signal, address.port, 3000, 0);
+      try {
+        expect(new URL(login.redirectTo).port).not.toBe(String(address.port));
+        expect((await fetch(login.redirectTo + '?code=fallback-code')).status).toBe(200);
+        expect(await login.code).toBe('fallback-code');
+      } finally { login.close(); }
+    } finally { occupied.close(); }
+  });
+  it('reports when both callback ports are occupied', async () => {
+    const primary = createServer();
+    const fallback = createServer();
+    await new Promise<void>(resolve => primary.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>(resolve => fallback.listen(0, '127.0.0.1', resolve));
+    const primaryAddress = primary.address();
+    const fallbackAddress = fallback.address();
+    if (!primaryAddress || typeof primaryAddress === 'string' || !fallbackAddress || typeof fallbackAddress === 'string') throw new Error('Expected TCP listeners');
+    try {
+      await expect(listenForLogin(new AbortController().signal, primaryAddress.port, 3000, fallbackAddress.port))
+        .rejects.toThrow('As portas locais de login estão ocupadas.');
+    } finally { primary.close(); fallback.close(); }
+  });
   it('rejects malformed request targets without crashing or consuming the pending login', async () => {
     const login = await listenForLogin(new AbortController().signal, 0, 3000);
     try {

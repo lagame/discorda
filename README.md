@@ -10,12 +10,14 @@ Comunicação para grupos: chat, chamadas, câmera e compartilhamento de tela. C
 
 ## Quero apenas entrar no servidor de um amigo
 
-1. Instale o Discorda pela página de [releases](https://github.com/kljoao/discorda/releases).
+1. Instale o Discorda pela página de [releases](https://github.com/kljoao/discorda/releases). Para usar as correções deste fork antes de haver um instalador publicado nele, o administrador pode gerar uma build comunitária com `npm run package:win` e enviar somente o instalador.
 2. Instale o [Radmin VPN](https://www.radmin-vpn.com/) e entre na rede privada informada pelo administrador.
 3. No Discorda 0.7.1 ou mais recente, informe o **IP Radmin do servidor** recebido do administrador. Confira a identificação do certificado com ele e clique em **Confiar e conectar**. O app salva a conexão e reinicia; não é necessário receber um arquivo JSON.
 4. Entre com Google. O administrador deve autorizar seu e-mail no Discorda e seu IP no Firewall. Se o Google estiver em modo de testes, também precisa adicionar seu e-mail aos usuários de teste.
 
 O computador que hospeda o servidor precisa estar ligado, com Docker e Radmin funcionando. Informe o IP do host, não o IP do seu próprio PC. A primeira conexão usa confiança explícita no certificado apresentado; confirme sua identificação com o administrador. Nas próximas conexões, mudanças inesperadas de certificado são bloqueadas. Arquivos JSON antigos continuam aceitos na opção secundária de importação.
+
+Para participar, o amigo instala **somente Discorda e Radmin VPN**; Docker, PostgreSQL e LiveKit ficam no computador servidor. Primeiro confirme que ambos aparecem na mesma rede Radmin. Depois peça ao administrador o IP Radmin do **servidor**, conecte o Discorda e entre com uma conta Google autorizada. O administrador precisa liberar separadamente o e-mail no Discorda, o IP Radmin do amigo no Firewall do servidor e, enquanto o app Google estiver em modo de testes, o e-mail em **Test users** no Google Cloud.
 
 ## Hospedar em VPS — Ubuntu e Caddy
 
@@ -46,6 +48,7 @@ Em **Authentication → URL Configuration → Redirect URLs**, adicione:
 ```text
 http://localhost:18080/admin/index.html
 http://127.0.0.1:3000/redirect/**
+http://127.0.0.1:3001/redirect/**
 ```
 
 Use `http://localhost:18080/admin/index.html` como Site URL para este ambiente privado. O callback público do Google continua sendo o domínio Supabase; você não precisa de domínio público para a API de casa. Se o aplicativo Google estiver em testes, cadastre o administrador e os amigos em **Test users**. A autorização no Google não substitui a lista do Discorda.
@@ -57,7 +60,7 @@ Tenha a URL do projeto e a chave **publishable** `sb_publishable_...`. Não é n
 Em PowerShell 7, como seu usuário normal:
 
 ```powershell
-git clone https://github.com/kljoao/discorda.git
+git clone https://github.com/lagame/discorda.git
 cd discorda
 pwsh -File tools/setup-selfhost.ps1
 ```
@@ -88,12 +91,24 @@ Compartilhe o IP Radmin do host e a identificação pública do certificado em u
 
 ### 5. Validar a instalação
 
+- Execute `pwsh -File tools/check-selfhost.ps1` no host. A checagem é somente de leitura e aponta serviços parados, IP/portas incorretos, bloqueios explícitos e permissões amplas do LiveKit nativo no Firewall. Corrija as falhas antes de convidar outras pessoas. Não desative regras amplas de bloqueio do Firewall para passar nessa checagem.
 - `http://localhost:18080/health/ready` deve retornar `Healthy`.
 - Entre com duas contas autorizadas e confirme chat, áudio e compartilhamento em duas máquinas.
 - Confirme que um e-mail não autorizado é recusado e que um IP não permitido não alcança as portas do host.
 - Teste saída/entrada na chamada, perda temporária de rede e reconexão.
 
-A qualidade depende de upload do host, conexão dos amigos, GPU e decodificação. LiveKit em Docker Desktop usa encaminhamento de portas; a validação real em duas máquinas é necessária. A configuração anuncia o IP Radmin do host para mídia. [Portas LiveKit](https://docs.livekit.io/transport/self-hosting/ports-firewall/).
+A qualidade depende de upload do host, conexão dos amigos, GPU e decodificação. LiveKit em Docker Desktop usa encaminhamento de portas; a validação real em duas máquinas é necessária. O piloto com LiveKit nativo no Windows é descrito em [operação e recuperação](docs/selfhosting-operations.md#livekit-nativo-no-windows). A configuração anuncia o IP Radmin do host para mídia. [Portas LiveKit](https://docs.livekit.io/transport/self-hosting/ports-firewall/).
+
+### Se o primeiro teste falhar
+
+| Sintoma | Confira primeiro |
+| --- | --- |
+| O servidor não responde | Radmin ativo nos dois PCs, mesma rede privada, IP do **host** no Discorda, Docker e API iniciados no host. Execute `pwsh -File tools/check-selfhost.ps1` no host. |
+| O Google conclui no navegador, mas o Discorda não entra | E-mail autorizado no Discorda e, se necessário, em **Test users**; Redirect URLs `127.0.0.1:3000` e `127.0.0.1:3001` cadastradas no Supabase. Feche o navegador de retorno e confira o app. |
+| Chat funciona, mas a chamada falha | A API e a mídia usam conexões diferentes. Confira UDP 7882, TCP 7881, IP Radmin anunciado pelo LiveKit e regras de Firewall do processo ativo. No Windows, se o encaminhamento UDP do Docker falhar, consulte o [piloto com LiveKit nativo](docs/selfhosting-operations.md#livekit-nativo-no-windows). |
+| Entra na sala e ouve, mas não transmite a voz | Confira se o microfone está ligado na chamada, escolha o dispositivo em **Configurações → Voz e microfone** e faça o teste local. Verifique também a permissão de microfone do Windows. Ouvir os outros não confirma a captura do próprio microfone. |
+
+Uma página `/health/ready` saudável confirma API e banco, não a ligação de mídia entre computadores. Não libere o LiveKit para qualquer IP nem desative o Firewall para resolver um teste: aplique a política restrita aos IPs dos amigos e repita a checagem. Veja [operação e recuperação](docs/selfhosting-operations.md#problemas-comuns) para diagnóstico detalhado.
 
 ## Operar, atualizar e fazer backup
 
